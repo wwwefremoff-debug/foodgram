@@ -1,5 +1,32 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+
+
+class UserManager(BaseUserManager):
+    """Менеджер для пользователя с логином по email."""
+
+    use_in_migrations = True
+
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('Нужно указать email.')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault(
+            'username',
+            extra_fields.get('username') or email,
+        )
+        extra_fields.setdefault('first_name', 'Admin')
+        extra_fields.setdefault('last_name', 'Admin')
+        return self.create_user(email, password, **extra_fields)
 
 
 class User(AbstractUser):
@@ -21,6 +48,8 @@ class User(AbstractUser):
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
+
+    objects = UserManager()
 
     class Meta:
         verbose_name = 'Пользователь'

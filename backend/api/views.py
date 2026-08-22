@@ -44,7 +44,7 @@ class UserViewSet(DjoserUserViewSet):
     pagination_class = LimitPageNumberPagination
 
     def get_permissions(self):
-        if self.action in ('list', 'retrieve'):
+        if self.action in ('list', 'retrieve', 'create'):
             return [AllowAny()]
         return super().get_permissions()
 

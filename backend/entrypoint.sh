@@ -36,4 +36,4 @@ for name, slug in (
 print('Tags ready:', Tag.objects.count())
 PY
 
-exec gunicorn --bind 0.0.0.0:8000 foodgram.wsgi
+exec gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 60 foodgram.wsgi
