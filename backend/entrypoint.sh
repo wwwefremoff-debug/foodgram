@@ -24,7 +24,7 @@ PY
 
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput
-python manage.py load_ingredients
+python manage.py load_ingredients || true
 python manage.py shell <<'PY'
 from recipes.models import Tag
 for name, slug in (
