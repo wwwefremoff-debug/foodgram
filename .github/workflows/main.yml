@@ -8,7 +8,6 @@ on:
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/foodgram-backend
-  DEPLOY_PATH: /home/foodgram
 
 jobs:
   tests:
@@ -53,16 +52,6 @@ jobs:
     needs: build_and_push
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Copy infra files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "infra/docker-compose.production.yml,infra/nginx.conf,infra/.env.example"
-          target: ${{ env.DEPLOY_PATH }}
-          strip_components: 1
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -70,10 +59,10 @@ jobs:
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ${{ env.DEPLOY_PATH }}
-            if [ ! -f .env ]; then cp .env.example .env; fi
-            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-            export DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
-            docker compose -f docker-compose.production.yml pull
-            docker compose -f docker-compose.production.yml up -d
+            set -e
+            cd /home/ubuntu/foodgram
+            git pull origin main
+            cd infra
+            docker compose up -d --build
+            docker compose restart nginx
             docker image prune -f
