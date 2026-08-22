@@ -52,7 +52,7 @@ jobs:
     needs: build_and_push
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy via git pull
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOST }}
