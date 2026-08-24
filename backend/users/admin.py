@@ -12,16 +12,27 @@ class UserAdmin(BaseUserAdmin):
         'email',
         'first_name',
         'last_name',
+        'recipes_count',
+        'subscribers_count',
     )
     search_fields = ('username', 'email', 'first_name', 'last_name')
     list_filter = ('is_staff', 'is_superuser', 'is_active')
-    ordering = ('id',)
+    ordering = ('username',)
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Аватар', {'fields': ('avatar',)}),
     )
+
+    @admin.display(description='Рецептов')
+    def recipes_count(self, obj):
+        return obj.recipes.count()
+
+    @admin.display(description='Подписчиков')
+    def subscribers_count(self, obj):
+        return obj.author_subscriptions.count()
 
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'author')
     search_fields = ('user__username', 'author__username')
+    list_filter = ('user', 'author')

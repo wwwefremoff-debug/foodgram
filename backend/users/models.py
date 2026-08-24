@@ -1,44 +1,26 @@
-from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-
-class UserManager(BaseUserManager):
-    """Менеджер для пользователя с логином по email."""
-
-    use_in_migrations = True
-
-    def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError('Нужно указать email.')
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_active', True)
-        extra_fields.setdefault(
-            'username',
-            extra_fields.get('username') or email,
-        )
-        extra_fields.setdefault('first_name', 'Admin')
-        extra_fields.setdefault('last_name', 'Admin')
-        return self.create_user(email, password, **extra_fields)
+from foodgram.constants import (
+    MAX_EMAIL_LENGTH,
+    MAX_NAME_LENGTH,
+    STR_REPR_MAX_LENGTH,
+)
 
 
 class User(AbstractUser):
     """Кастомный пользователь Foodgram."""
 
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
+
     email = models.EmailField(
         'Адрес электронной почты',
-        max_length=254,
+        max_length=MAX_EMAIL_LENGTH,
         unique=True,
     )
-    first_name = models.CharField('Имя', max_length=150)
-    last_name = models.CharField('Фамилия', max_length=150)
+    first_name = models.CharField('Имя', max_length=MAX_NAME_LENGTH)
+    last_name = models.CharField('Фамилия', max_length=MAX_NAME_LENGTH)
     avatar = models.ImageField(
         'Аватар',
         upload_to='users/',
@@ -46,18 +28,13 @@ class User(AbstractUser):
         null=True,
     )
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
-
-    objects = UserManager()
-
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
-        ordering = ('id',)
+        ordering = ('username',)
 
     def __str__(self):
-        return self.username
+        return self.username[:STR_REPR_MAX_LENGTH]
 
 
 class Subscription(models.Model):
@@ -66,20 +43,20 @@ class Subscription(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='subscriptions',
+        related_name='user_subscriptions',
         verbose_name='Подписчик',
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='subscribers',
+        related_name='author_subscriptions',
         verbose_name='Автор',
     )
 
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=('user', 'author'),
                 name='unique_subscription',
@@ -88,7 +65,7 @@ class Subscription(models.Model):
                 check=~models.Q(user=models.F('author')),
                 name='prevent_self_subscription',
             ),
-        ]
+        )
 
     def __str__(self):
-        return f'{self.user} → {self.author}'
+        return f'{self.user} → {self.author}'[:STR_REPR_MAX_LENGTH]
