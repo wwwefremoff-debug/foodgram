@@ -1,10 +1,11 @@
-name: Foodgram CI/CD
+name: CI
 
 on:
   push:
     branches:
       - main
       - master
+  pull_request:
   workflow_dispatch:
 
 env:
@@ -34,6 +35,7 @@ jobs:
 
   build_and_push:
     needs: tests
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,37 +50,3 @@ jobs:
           context: ./backend
           push: true
           tags: ${{ env.DOCKER_IMAGE }}:latest
-
-  deploy:
-    needs: build_and_push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for SSH
-        run: |
-          echo "Waiting for ${{ secrets.HOST }}:22 ..."
-          for i in $(seq 1 24); do
-            if nc -zw5 "${{ secrets.HOST }}" 22; then
-              echo "SSH is reachable"
-              exit 0
-            fi
-            echo "Attempt ${i}/24: VM is not reachable on port 22"
-            sleep 5
-          done
-          echo "::error::VM ${{ secrets.HOST }} is stopped or SSH port 22 is closed. Start r-backend-vm-1041981081 in Yandex Cloud / Practicum console, then re-run this job."
-          exit 1
-      - name: Deploy via git pull
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_KEY }}
-          timeout: 90s
-          command_timeout: 20m
-          script: |
-            set -e
-            cd /home/ubuntu/foodgram
-            git pull origin main
-            cd infra
-            docker compose up -d --build
-            docker compose restart nginx
-            docker image prune -f

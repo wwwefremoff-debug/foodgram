@@ -1,5 +1,6 @@
 # Foodgram
 
+[![CI](https://github.com/wwwefremoff-debug/foodgram/actions/workflows/main.yml/badge.svg)](https://github.com/wwwefremoff-debug/foodgram/actions/workflows/main.yml)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/Django-5.0-green.svg)](https://www.djangoproject.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](https://www.docker.com/)
