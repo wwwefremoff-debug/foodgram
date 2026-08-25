@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import UserManager as DjangoUserManager
 from django.db import models
+from django.db.models import Count
 
 from foodgram.constants import (
     MAX_EMAIL_LENGTH,
@@ -8,11 +10,25 @@ from foodgram.constants import (
 )
 
 
+class UserQuerySet(models.QuerySet):
+    """QuerySet пользователей с числом рецептов."""
+
+    def with_recipes_count(self):
+        return self.annotate(recipes_count=Count('recipes')).order_by(
+            *self.model._meta.ordering,
+        )
+
+
+class UserManager(DjangoUserManager.from_queryset(UserQuerySet)):
+    """Менеджер пользователя с кастомным QuerySet."""
+
+
 class User(AbstractUser):
     """Кастомный пользователь Foodgram."""
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
+    objects = UserManager()
 
     email = models.EmailField(
         'Адрес электронной почты',
@@ -49,7 +65,7 @@ class Subscription(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='author_subscriptions',
+        related_name='subscriptions_to_author',
         verbose_name='Автор',
     )
 

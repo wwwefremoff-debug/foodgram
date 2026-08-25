@@ -4,7 +4,6 @@ from djoser.serializers import UserSerializer as DjoserUserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
-from api.annotations import annotate_recipe_flags, with_recipes_count
 from foodgram.constants import (
     MAX_AMOUNT,
     MAX_COOKING_TIME,
@@ -109,8 +108,8 @@ class RecipeMinifiedSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class RecipeSerializer(serializers.ModelSerializer):
-    """Сериализатор рецепта (чтение)."""
+class RecipeReadSerializer(serializers.ModelSerializer):
+    """Сериализатор рецепта для выдачи."""
 
     tags = TagSerializer(many=True, read_only=True)
     author = UserSerializer(read_only=True)
@@ -119,8 +118,11 @@ class RecipeSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True,
     )
-    is_favorited = serializers.BooleanField(read_only=True)
-    is_in_shopping_cart = serializers.BooleanField(read_only=True)
+    is_favorited = serializers.BooleanField(read_only=True, default=False)
+    is_in_shopping_cart = serializers.BooleanField(
+        read_only=True,
+        default=False,
+    )
     image = serializers.ImageField()
 
     class Meta:
@@ -236,20 +238,14 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
     def to_representation(self, instance):
-        request = self.context.get('request')
-        user = request.user if request else None
-        recipe = annotate_recipe_flags(
-            Recipe.objects.filter(pk=instance.pk),
-            user,
-        ).first()
-        return RecipeSerializer(recipe, context=self.context).data
+        return RecipeReadSerializer(instance, context=self.context).data
 
 
 class UserWithRecipesSerializer(UserSerializer):
     """Пользователь с рецептами для подписок."""
 
     recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.IntegerField(read_only=True)
+    recipes_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + (
@@ -260,9 +256,9 @@ class UserWithRecipesSerializer(UserSerializer):
     def get_recipes(self, obj):
         request = self.context.get('request')
         recipes = obj.recipes.all()
-        if request is not None:
+        if request:
             recipes_limit = request.query_params.get('recipes_limit')
-            if recipes_limit is not None:
+            if recipes_limit:
                 try:
                     recipes = recipes[:int(recipes_limit)]
                 except (TypeError, ValueError):
@@ -295,11 +291,8 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
         return attrs
 
     def to_representation(self, instance):
-        author = with_recipes_count(User.objects.all()).get(
-            pk=instance.author_id,
-        )
         return UserWithRecipesSerializer(
-            author,
+            instance.author,
             context=self.context,
         ).data
 
@@ -313,7 +306,12 @@ class RecipeRelationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if self.Meta.model.objects.filter(**attrs).exists():
             raise serializers.ValidationError(
-                {'errors': self.error_message},
+                {
+                    'errors': (
+                        'Рецепт уже добавлен в '
+                        f'{self.Meta.model._meta.verbose_name}.'
+                    ),
+                },
             )
         return attrs
 
@@ -327,16 +325,12 @@ class RecipeRelationSerializer(serializers.ModelSerializer):
 class FavoriteSerializer(RecipeRelationSerializer):
     """Добавление рецепта в избранное."""
 
-    error_message = 'Рецепт уже в избранном.'
-
     class Meta(RecipeRelationSerializer.Meta):
         model = Favorite
 
 
 class ShoppingCartSerializer(RecipeRelationSerializer):
     """Добавление рецепта в список покупок."""
-
-    error_message = 'Рецепт уже в списке покупок.'
 
     class Meta(RecipeRelationSerializer.Meta):
         model = ShoppingCart

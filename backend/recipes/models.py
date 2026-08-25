@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import BooleanField, Exists, OuterRef, Value
 
 from foodgram.constants import (
     MAX_AMOUNT,
@@ -55,9 +56,32 @@ class Ingredient(models.Model):
         return f'{self.name}, {self.measurement_unit}'[:STR_REPR_MAX_LENGTH]
 
 
+class RecipeQuerySet(models.QuerySet):
+    """QuerySet рецептов с флагами избранного и корзины."""
+
+    def with_user_annotations(self, user):
+        is_favorited = Value(False, output_field=BooleanField())
+        is_in_shopping_cart = Value(False, output_field=BooleanField())
+        if user.is_authenticated:
+            is_favorited = Exists(
+                Favorite.objects.filter(user=user, recipe=OuterRef('pk')),
+            )
+            is_in_shopping_cart = Exists(
+                ShoppingCart.objects.filter(
+                    user=user,
+                    recipe=OuterRef('pk'),
+                ),
+            )
+        return self.annotate(
+            is_favorited=is_favorited,
+            is_in_shopping_cart=is_in_shopping_cart,
+        ).order_by(*self.model._meta.ordering)
+
+
 class Recipe(models.Model):
     """Рецепт."""
 
+    objects = RecipeQuerySet.as_manager()
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -160,6 +184,12 @@ class UserRecipeRelation(models.Model):
 
     class Meta:
         abstract = True
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'recipe'),
+                name='%(class)s_unique_user_recipe',
+            ),
+        )
 
     def __str__(self):
         return (
@@ -171,26 +201,16 @@ class UserRecipeRelation(models.Model):
 class Favorite(UserRecipeRelation):
     """Избранный рецепт."""
 
-    class Meta:
+    class Meta(UserRecipeRelation.Meta):
+        abstract = False
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранное'
-        constraints = (
-            models.UniqueConstraint(
-                fields=('user', 'recipe'),
-                name='unique_favorite',
-            ),
-        )
 
 
 class ShoppingCart(UserRecipeRelation):
     """Рецепт в списке покупок."""
 
-    class Meta:
+    class Meta(UserRecipeRelation.Meta):
+        abstract = False
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
-        constraints = (
-            models.UniqueConstraint(
-                fields=('user', 'recipe'),
-                name='unique_shopping_cart',
-            ),
-        )

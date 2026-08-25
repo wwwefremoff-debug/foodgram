@@ -13,7 +13,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.annotations import annotate_recipe_flags, with_recipes_count
 from api.filters import IngredientFilter, RecipeFilter
 from api.pagination import LimitPageNumberPagination
 from api.permissions import IsAuthorOrReadOnly
@@ -21,7 +20,7 @@ from api.serializers import (
     FavoriteSerializer,
     IngredientSerializer,
     RecipeCreateUpdateSerializer,
-    RecipeSerializer,
+    RecipeReadSerializer,
     SetAvatarSerializer,
     ShoppingCartSerializer,
     SubscriptionCreateSerializer,
@@ -55,10 +54,7 @@ class UserViewSet(DjoserUserViewSet):
         permission_classes=(IsAuthenticated,),
     )
     def me(self, request, *args, **kwargs):
-        serializer = self.get_serializer(
-            request.user,
-            context={'request': request},
-        )
+        serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
     @action(
@@ -71,7 +67,7 @@ class UserViewSet(DjoserUserViewSet):
         serializer = SetAvatarSerializer(
             request.user,
             data=request.data,
-            context={'request': request},
+            context=self.get_serializer_context(),
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -89,14 +85,14 @@ class UserViewSet(DjoserUserViewSet):
         permission_classes=(IsAuthenticated,),
     )
     def subscriptions(self, request):
-        authors = with_recipes_count(
-            User.objects.filter(author_subscriptions__user=request.user)
-        )
+        authors = User.objects.filter(
+            subscriptions_to_author__user=request.user,
+        ).with_recipes_count()
         page = self.paginate_queryset(authors)
         serializer = UserWithRecipesSerializer(
             page,
             many=True,
-            context={'request': request},
+            context=self.get_serializer_context(),
         )
         return self.get_paginated_response(serializer.data)
 
@@ -109,7 +105,7 @@ class UserViewSet(DjoserUserViewSet):
         author = get_object_or_404(User, id=id)
         serializer = SubscriptionCreateSerializer(
             data={'user': request.user.id, 'author': author.id},
-            context={'request': request},
+            context=self.get_serializer_context(),
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -164,18 +160,18 @@ class RecipeViewSet(viewsets.ModelViewSet):
             'tags',
             'recipe_ingredients__ingredient',
         )
-        return annotate_recipe_flags(queryset, self.request.user)
+        return queryset.with_user_annotations(self.request.user)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update', 'update'):
             return RecipeCreateUpdateSerializer
-        return RecipeSerializer
+        return RecipeReadSerializer
 
     def _add_relation(self, serializer_class, request, pk):
         recipe = get_object_or_404(Recipe, pk=pk)
         serializer = serializer_class(
             data={'user': request.user.id, 'recipe': recipe.id},
-            context={'request': request},
+            context=self.get_serializer_context(),
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
