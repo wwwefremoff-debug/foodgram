@@ -35,5 +35,16 @@ for name, slug in (
     Tag.objects.get_or_create(name=name, defaults={'slug': slug})
 print('Tags ready:', Tag.objects.count())
 PY
+python manage.py load_demo_data || true
+python manage.py shell <<'PY'
+from recipes.models import Tag
+for name, slug in (
+    ('Завтрак', 'breakfast'),
+    ('Обед', 'lunch'),
+    ('Ужин', 'dinner'),
+):
+    Tag.objects.get_or_create(name=name, defaults={'slug': slug})
+print('Tags ready:', Tag.objects.count())
+PY
 
 exec gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 60 foodgram.wsgi
