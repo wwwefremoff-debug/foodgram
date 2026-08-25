@@ -204,11 +204,15 @@ class Command(BaseCommand):
 
     @staticmethod
     def _images_dir():
-        candidates = (
+        candidates = [
             Path('/app/data/recipe_images'),
-            Path(__file__).resolve().parents[4] / 'data' / 'recipe_images',
-            Path(__file__).resolve().parents[5] / 'data' / 'recipe_images',
-        )
+        ]
+        base = Path(__file__).resolve()
+        for depth in (4, 5):
+            if len(base.parents) > depth:
+                candidates.append(
+                    base.parents[depth] / 'data' / 'recipe_images',
+                )
         for path in candidates:
             if path.is_dir():
                 return path
