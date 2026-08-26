@@ -68,7 +68,7 @@ class RecipeAdmin(admin.ModelAdmin):
 
     @admin.display(description='В избранном')
     def favorites_count(self, obj):
-        return obj.favorite_set.count()
+        return obj.favorite.count()
 
     @admin.display(description='Картинка')
     def image_preview(self, obj):

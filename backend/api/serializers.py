@@ -304,12 +304,13 @@ class RecipeRelationSerializer(serializers.ModelSerializer):
         fields = ('user', 'recipe')
 
     def validate(self, attrs):
-        if self.Meta.model.objects.filter(**attrs).exists():
+        model = self.Meta.model
+        if model.objects.filter(**attrs).exists():
             raise serializers.ValidationError(
                 {
                     'errors': (
                         'Рецепт уже добавлен в '
-                        f'{self.Meta.model._meta.verbose_name}.'
+                        f'{model._meta.verbose_name}.'
                     ),
                 },
             )

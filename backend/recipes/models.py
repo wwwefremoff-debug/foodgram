@@ -174,11 +174,13 @@ class UserRecipeRelation(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
+        related_name='%(class)s',
         verbose_name='Пользователь',
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
+        related_name='%(class)s',
         verbose_name='Рецепт',
     )
 

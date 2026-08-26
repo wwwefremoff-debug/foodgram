@@ -75,8 +75,7 @@ class UserViewSet(DjoserUserViewSet):
 
     @avatar.mapping.delete
     def delete_avatar(self, request):
-        if request.user.avatar:
-            request.user.avatar.delete(save=True)
+        request.user.avatar.delete(save=True)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -233,7 +232,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         ingredients = RecipeIngredient.objects.filter(
-            recipe__shoppingcart_set__user=request.user,
+            recipe__shoppingcart__user=request.user,
         ).values(
             name=F('ingredient__name'),
             unit=F('ingredient__measurement_unit'),
