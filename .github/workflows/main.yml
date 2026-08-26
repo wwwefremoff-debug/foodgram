@@ -77,7 +77,8 @@ jobs:
           script: |
             set -e
             cd /home/ubuntu/foodgram
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             cd infra
             docker compose up -d --build
             docker compose restart nginx
