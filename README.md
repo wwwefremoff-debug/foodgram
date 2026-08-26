@@ -5,13 +5,13 @@
 [![Django](https://img.shields.io/badge/Django-5.0-green.svg)](https://www.djangoproject.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](https://www.docker.com/)
 
-**Сайт проекта:** [http://158.160.132.25.sslip.io/](http://158.160.132.25.sslip.io/)
+**Сайт проекта:** [https://foodgram-efremoff.hopto.org/](https://foodgram-efremoff.hopto.org/)
 
 Foodgram — сервис для публикации кулинарных рецептов. Пользователи регистрируются, публикуют рецепты с фото, ингредиентами и тегами, подписываются на авторов, добавляют рецепты в избранное и формируют список покупок, который можно скачать файлом.
 
 API соответствует спецификации OpenAPI: `docs/openapi-schema.yml`.
 
-Документация API (ReDoc): [http://158.160.132.25.sslip.io/api/docs/](http://158.160.132.25.sslip.io/api/docs/)
+Документация API (ReDoc): [https://foodgram-efremoff.hopto.org/api/docs/](https://foodgram-efremoff.hopto.org/api/docs/)
 
 ## Возможности
 
@@ -41,10 +41,12 @@ cp infra/.env.example infra/.env
 
 | Переменная | Описание |
 | --- | --- |
+| `DOMAIN` | Публичный домен сайта, например `foodgram-ivanov.duckdns.org` |
+| `CERTBOT_EMAIL` | Email для Let's Encrypt |
 | `SECRET_KEY` | Секретный ключ Django |
 | `DEBUG` | `False` в продакшене |
-| `ALLOWED_HOSTS` | Хосты через запятую, например `localhost,127.0.0.1,158.160.132.25.sslip.io` |
-| `CSRF_TRUSTED_ORIGINS` | Доверенные origin через запятую, с `http://` |
+| `ALLOWED_HOSTS` | Хосты через запятую, включая `DOMAIN` |
+| `CSRF_TRUSTED_ORIGINS` | Доверенные origin через запятую, с `https://` |
 | `POSTGRES_DB` | Имя базы данных |
 | `POSTGRES_USER` | Пользователь PostgreSQL |
 | `POSTGRES_PASSWORD` | Пароль PostgreSQL |
@@ -72,6 +74,30 @@ python manage.py runserver
 
 - API: http://127.0.0.1:8000/api/
 - Админка: http://127.0.0.1:8000/admin/
+
+## Домен и HTTPS
+
+Ревьюер ожидает обычный домен и HTTPS (не IP и не `sslip.io`).
+
+1. Создайте бесплатный поддомен (No-IP, Dynu, DuckDNS и т.п.) и укажите A-запись на IP сервера.
+2. В `infra/.env` заполните:
+
+```bash
+DOMAIN=foodgram-efremoff.hopto.org
+CERTBOT_EMAIL=your@email.com
+ALLOWED_HOSTS=localhost,127.0.0.1,foodgram-efremoff.hopto.org
+CSRF_TRUSTED_ORIGINS=https://foodgram-efremoff.hopto.org
+```
+
+3. На сервере выпустите сертификат:
+
+```bash
+cd ~/foodgram/infra
+chmod +x init-https.sh
+./init-https.sh
+```
+
+После этого сайт будет доступен по `https://foodgram-efremoff.hopto.org/`.
 
 ## Запуск через Docker Compose
 
